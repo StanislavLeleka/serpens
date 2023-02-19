@@ -51,6 +51,19 @@ impl Matrix {
         Self::new(Dimension::ThreeDim, size, shape, data)
     }
 
+    pub fn range(left: usize, right: usize) -> Matrix {
+        let mut data: Vec<f64> = vec![];
+        for i in left..(right + 1) {
+            data.push(i as f64);
+        }
+        Self::new(
+            Dimension::OneDim,
+            data.len(),
+            Shape::new(data.len(), 1, 0),
+            data,
+        )
+    }
+
     pub fn random(size: usize, dim: Dimension) -> Matrix {
         let mut rng: ThreadRng = rand::thread_rng();
         match dim {
@@ -112,6 +125,16 @@ impl ops::Add<f64> for Matrix {
     }
 }
 
+impl ops::Mul<f64> for Matrix {
+    type Output = Matrix;
+
+    fn mul(mut self, rhs: f64) -> Self::Output {
+        let data: Vec<f64> = self.data().iter().map(|e| e * rhs).collect();
+        self.set_data(data);
+        self
+    }
+}
+
 #[test]
 fn test_matrix_init() {
     let elements: Vec<f64> = vec![1.2, 3.4, 9.0, 8.3, 9.2];
@@ -160,9 +183,18 @@ fn test_random() {
 
 #[test]
 fn test_add() {
-    let mut matrix: Matrix = Matrix::random(4, Dimension::OneDim);
+    let mut matrix: Matrix = Matrix::random(4, Dimension::TwoDim);
     Printer::print_matrix(&matrix);
 
     matrix = matrix + 2.0;
+    Printer::print_matrix(&matrix);
+
+    matrix = matrix * 3.0;
+    Printer::print_matrix(&matrix);
+}
+
+#[test]
+fn test_range() {
+    let matrix: Matrix = Matrix::range(6, 20);
     Printer::print_matrix(&matrix);
 }
