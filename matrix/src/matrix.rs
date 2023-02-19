@@ -1,3 +1,5 @@
+use std::ops;
+
 use crate::{dimension::Dimension, printer::Printer, shape::Shape};
 use rand::{rngs::ThreadRng, Rng};
 
@@ -94,13 +96,27 @@ impl Matrix {
     pub fn data(&self) -> &[f64] {
         self.data.as_ref()
     }
+
+    pub fn set_data(&mut self, data: Vec<f64>) {
+        self.data = data;
+    }
+}
+
+impl ops::Add<f64> for Matrix {
+    type Output = Matrix;
+
+    fn add(mut self, rhs: f64) -> Self::Output {
+        let data: Vec<f64> = self.data().iter().map(|e| e + rhs).collect();
+        self.set_data(data);
+        self
+    }
 }
 
 #[test]
 fn test_matrix_init() {
     let elements: Vec<f64> = vec![1.2, 3.4, 9.0, 8.3, 9.2];
     let matrix: Matrix = Matrix::matrix(elements);
-    Printer::print_matrix(matrix);
+    Printer::print_matrix(&matrix);
 
     println!("-----------------");
 
@@ -110,7 +126,7 @@ fn test_matrix_init() {
         vec![7.0, 1.0, 7.5],
     ];
     let matrix: Matrix = Matrix::matrix2d(elements);
-    Printer::print_matrix(matrix);
+    Printer::print_matrix(&matrix);
 
     println!("-----------------");
 
@@ -127,17 +143,26 @@ fn test_matrix_init() {
         ],
     ];
     let matrix: Matrix = Matrix::matrix3d(elements);
-    Printer::print_matrix(matrix);
+    Printer::print_matrix(&matrix);
 }
 
 #[test]
 fn test_random() {
     let matrix: Matrix = Matrix::random(4, Dimension::OneDim);
-    Printer::print_matrix(matrix);
+    Printer::print_matrix(&matrix);
 
     let matrix: Matrix = Matrix::random(4, Dimension::TwoDim);
-    Printer::print_matrix(matrix);
+    Printer::print_matrix(&matrix);
 
     let matrix: Matrix = Matrix::random(4, Dimension::ThreeDim);
-    Printer::print_matrix(matrix);
+    Printer::print_matrix(&matrix);
+}
+
+#[test]
+fn test_add() {
+    let mut matrix: Matrix = Matrix::random(4, Dimension::OneDim);
+    Printer::print_matrix(&matrix);
+
+    matrix = matrix + 2.0;
+    Printer::print_matrix(&matrix);
 }

@@ -3,11 +3,11 @@ use crate::{dimension::Dimension, matrix::Matrix};
 pub struct Printer {}
 
 impl Printer {
-    pub fn print_matrix(matrix: Matrix) {
+    pub fn print_matrix(matrix: &Matrix) {
         match matrix.dim() {
             Dimension::OneDim => println!("{:?}", matrix.data()),
-            Dimension::TwoDim => Self::print_2d_matrix(&matrix),
-            Dimension::ThreeDim => Self::print_3d_matrix(&matrix),
+            Dimension::TwoDim => Self::print_2d_matrix(matrix),
+            Dimension::ThreeDim => Self::print_3d_matrix(matrix),
         }
     }
 
