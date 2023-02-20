@@ -1,48 +1,53 @@
+use std::fmt;
+
 use crate::{dimension::Dimension, matrix::Matrix};
 
-pub struct Printer {}
-
-impl Printer {
-    pub fn print_matrix(matrix: &Matrix) {
-        match matrix.dim() {
-            Dimension::OneDim => println!("{:?}", matrix.data()),
-            Dimension::TwoDim => Self::print_2d_matrix(matrix),
-            Dimension::ThreeDim => Self::print_3d_matrix(matrix),
-        }
-    }
-
-    fn print_2d_matrix(matrix: &Matrix) {
-        let mut skip: usize = 0;
-        Self::print_rows(matrix, matrix.shape().y(), &mut skip);
-    }
-
-    fn print_3d_matrix(matrix: &Matrix) {
-        println!("[");
-
-        let mut skip: usize = 0;
-        for _ in 0..matrix.shape().z() {
-            Self::print_rows(matrix, matrix.shape().y(), &mut skip);
+impl fmt::Debug for Matrix {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fn print_2d_matrix(matrix: &Matrix, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            let mut skip: usize = 0;
+            print_rows(matrix, matrix.shape().y(), &mut skip, f)
         }
 
-        print!("]");
-    }
+        fn print_3d_matrix(matrix: &Matrix, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "{}\n", "[").unwrap();
 
-    fn print_rows(matrix: &Matrix, rows: usize, skip: &mut usize) {
-        println!("[");
+            let mut skip: usize = 0;
+            for _ in 0..matrix.shape().z() {
+                print_rows(matrix, matrix.shape().y(), &mut skip, f).unwrap();
+            }
 
-        for _ in 0..rows {
-            let row: Vec<&f64> = matrix
-                .data()
-                .iter()
-                .skip(*skip)
-                .take(matrix.size())
-                .into_iter()
-                .collect();
-            *skip += matrix.size();
-
-            println!("  {:?}", row);
+            write!(f, "{}", "]")
         }
 
-        println!("]")
+        fn print_rows(
+            matrix: &Matrix,
+            rows: usize,
+            skip: &mut usize,
+            f: &mut fmt::Formatter<'_>,
+        ) -> fmt::Result {
+            write!(f, "{}\n", "[").unwrap();
+
+            for _ in 0..rows {
+                let row: Vec<&f64> = matrix
+                    .data()
+                    .iter()
+                    .skip(*skip)
+                    .take(matrix.size())
+                    .into_iter()
+                    .collect();
+
+                *skip += matrix.size();
+                write!(f, " {:?}\n", row).unwrap();
+            }
+
+            write!(f, "{}\n", "]")
+        }
+
+        match self.dim() {
+            Dimension::OneDim => write!(f, "{:?}", self.data()),
+            Dimension::TwoDim => print_2d_matrix(self, f),
+            Dimension::ThreeDim => print_3d_matrix(self, f),
+        }
     }
 }
