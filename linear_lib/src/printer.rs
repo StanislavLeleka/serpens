@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::{dimension::Dimension, matrix::Matrix};
+use crate::matrix::{dimension::Dimension, matrix::Matrix};
 
 impl fmt::Debug for Matrix {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

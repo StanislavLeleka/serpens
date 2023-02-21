@@ -1,4 +1,5 @@
 [workspace]
 members = [
-    "matrix",
+    "linear_lib",
+    "cayley_lib",
 ]

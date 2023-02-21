@@ -1,7 +1,6 @@
-use std::ops;
-
-use crate::{dimension::Dimension, shape::Shape};
+use super::{dimension::Dimension, shape::Shape};
 use rand::{rngs::ThreadRng, Rng};
+use std::ops;
 
 pub struct Matrix {
     dim: Dimension,
@@ -83,6 +82,11 @@ impl Matrix {
         Matrix::new(dim, size, shape, data)
     }
 
+    pub fn get(&self, row: usize, col: usize) -> f64 {
+        let index: usize = row * self.shape.y() + col;
+        self.data[index]
+    }
+
     pub fn dim(&self) -> &Dimension {
         &self.dim
     }
@@ -150,7 +154,7 @@ impl ops::Mul<f64> for Matrix {
 
 #[cfg(test)]
 mod test {
-    use crate::{dimension::Dimension, matrix::Matrix};
+    use crate::matrix::{dimension::Dimension, matrix::Matrix};
 
     #[test]
     fn test_matrix_init() {
@@ -217,5 +221,16 @@ mod test {
     fn test_range() {
         let matrix: Matrix = Matrix::range(6, 20);
         println!("{:?}", &matrix);
+    }
+
+    #[test]
+    fn test_get() {
+        let elements: Vec<Vec<f64>> = vec![
+            vec![1.2, 2.4, 3.5],
+            vec![4.7, 6.1, 7.2],
+            vec![7.0, 1.0, 7.5],
+        ];
+        let matrix: Matrix = Matrix::matrix2d(elements);
+        println!("{:?}", matrix.get(1, 0));
     }
 }
