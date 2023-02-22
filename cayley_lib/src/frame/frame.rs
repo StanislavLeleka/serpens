@@ -1,53 +1,62 @@
-use std::{
-    collections::{HashMap, HashSet},
-    ops,
-};
+use std::collections::HashMap;
 
 use linear::matrix::matrix::Matrix;
 
-use super::row::Row;
+use super::{cell::Cell, column::Column, row::Row};
 
 pub struct Frame {
-    rows: Vec<Row>,
-    rows_map: HashMap<String, Vec<Row>>,
+    columns_map: HashMap<String, Column>,
+    rows_map: HashMap<usize, Row>,
 }
 
 impl Frame {
     pub fn frame(data: Matrix, columns: Vec<String>) -> Frame {
-        let mut rows_map: HashMap<String, Vec<Row>> = HashMap::new();
+        let mut rows_map: HashMap<usize, Row> = Self::gen_rows_map(data.shape().y());
+        let mut columns_map: HashMap<String, Column> = Self::gen_cols_map(&columns);
 
         for i in 0..columns.len() {
-            let mut rows: Vec<Row> = vec![];
             for y in 0..data.shape().y() {
-                rows.push(Row::new(columns[i].clone(), data.get(i, y), 0));
+                let cell: Cell = Cell::new(y, i, data.get(y, i));
+                let row: Option<&mut Row> = rows_map.get_mut(&y);
+                let col: Option<&mut Column> = columns_map.get_mut(&columns[i]);
+
+                match row {
+                    Some(r) => (*r).cells_mut().push(cell),
+                    None => panic!("invalid row index"),
+                }
+                match col {
+                    Some(c) => (*c).cells_mut().push(cell),
+                    None => panic!("invalid column name"),
+                }
             }
-            rows_map.insert(columns[i].clone(), rows);
         }
 
         Frame {
-            rows: vec![],
+            columns_map,
             rows_map,
         }
     }
 
-    pub fn rows(&self) -> &[Row] {
-        self.rows.as_ref()
+    fn gen_rows_map(size: usize) -> HashMap<usize, Row> {
+        (0..size).fold(HashMap::new(), |mut m, i| {
+            m.insert(i, Row::new(i, vec![]));
+            m
+        })
     }
 
-    pub fn rows_map(&self) -> &HashMap<String, Vec<Row>> {
+    fn gen_cols_map(titles: &Vec<String>) -> HashMap<String, Column> {
+        (0..titles.len()).fold(HashMap::new(), |mut m, i| {
+            m.insert(titles[i].clone(), Column::new(titles[i].clone(), vec![]));
+            m
+        })
+    }
+
+    pub fn columns_map(&self) -> &HashMap<String, Column> {
+        &self.columns_map
+    }
+
+    pub fn rows_map(&self) -> &HashMap<usize, Row> {
         &self.rows_map
-    }
-}
-
-impl ops::Index<String> for Frame {
-    type Output = Row;
-
-    fn index(&self, index: String) -> &Self::Output {
-        if !self.rows_map.contains_key(&index) {
-            panic!("key not found")
-        }
-
-        todo!()
     }
 }
 
@@ -69,5 +78,7 @@ mod test {
         let my_column_names = vec![String::from("temperature"), String::from("activity")];
 
         let frame: Frame = Frame::frame(my_data, my_column_names);
+
+        println!("{:?}", frame);
     }
 }

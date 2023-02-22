@@ -83,7 +83,7 @@ impl Matrix {
     }
 
     pub fn get(&self, row: usize, col: usize) -> f64 {
-        let index: usize = row * self.shape.y() + col;
+        let index: usize = row * self.shape.x() + col;
         self.data[index]
     }
 
@@ -226,11 +226,13 @@ mod test {
     #[test]
     fn test_get() {
         let elements: Vec<Vec<f64>> = vec![
-            vec![1.2, 2.4, 3.5],
-            vec![4.7, 6.1, 7.2],
-            vec![7.0, 1.0, 7.5],
+            vec![0.0, 3.0],
+            vec![10.0, 7.0],
+            vec![20.0, 9.0],
+            vec![30.0, 14.0],
+            vec![40.0, 15.0],
         ];
         let matrix: Matrix = Matrix::matrix2d(elements);
-        println!("{:?}", matrix.get(1, 0));
+        println!("{:?}", matrix.get(4, 0));
     }
 }
