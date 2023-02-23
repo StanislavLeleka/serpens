@@ -1,21 +1,23 @@
 use std::fmt;
 
-use crate::frame::frame::Frame;
+use crate::{
+    frame::{column::Column, frame::Frame},
+    print_helper::PrintHelper,
+};
 
-impl fmt::Debug for Frame {
+impl<'a> fmt::Debug for Frame {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for (k, _) in self.columns_map() {
-            write!(f, "{: <15} | ", k).unwrap();
-        }
+        PrintHelper::print_headers(&self.headers(), f);
+        PrintHelper::print_columns(&self, f);
 
-        write!(f, "{}\n", "").unwrap();
+        Ok(())
+    }
+}
 
-        for (k, v) in self.rows_map() {
-            for c in (*v).cells() {
-                write!(f, "{: <15} | ", c.value()).unwrap();
-            }
-            write!(f, "{}\n", "").unwrap();
-        }
+impl<'a> fmt::Debug for Column {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        PrintHelper::print_headers(&[self.name().to_string()], f);
+        PrintHelper::print_column(self, f);
 
         Ok(())
     }

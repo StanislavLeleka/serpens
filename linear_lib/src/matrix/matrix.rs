@@ -87,6 +87,24 @@ impl Matrix {
         self.data[index]
     }
 
+    pub fn get_row(&self, row: usize) -> Vec<&f64> {
+        self.data()
+            .iter()
+            .skip(row * self.size)
+            .take(self.size)
+            .into_iter()
+            .collect()
+    }
+
+    pub fn get_column(&self, col: usize) -> Vec<&f64> {
+        let mut column: Vec<&f64> = vec![&0.0; self.shape.y()];
+        for i in 0..self.shape.y() {
+            let index: usize = col + (i * self.size);
+            column[i] = &self.data[index];
+        }
+        column
+    }
+
     pub fn dim(&self) -> &Dimension {
         &self.dim
     }
@@ -234,5 +252,36 @@ mod test {
         ];
         let matrix: Matrix = Matrix::matrix2d(elements);
         println!("{:?}", matrix.get(4, 0));
+    }
+
+    #[test]
+    fn test_get_row() {
+        let elements: Vec<Vec<f64>> = vec![
+            vec![0.0, 3.0],
+            vec![10.0, 7.0],
+            vec![20.0, 9.0],
+            vec![30.0, 14.0],
+            vec![40.0, 15.0],
+        ];
+        let matrix: Matrix = Matrix::matrix2d(elements);
+
+        println!("{:?}", matrix.get_row(0));
+        println!("{:?}", matrix.get_row(1));
+        println!("{:?}", matrix.get_row(2));
+    }
+
+    #[test]
+    fn test_get_column() {
+        let elements: Vec<Vec<f64>> = vec![
+            vec![0.0, 3.0],
+            vec![10.0, 7.0],
+            vec![20.0, 9.0],
+            vec![30.0, 14.0],
+            vec![40.0, 15.0],
+        ];
+        let matrix: Matrix = Matrix::matrix2d(elements);
+
+        println!("{:?}", matrix.get_column(0));
+        println!("{:?}", matrix.get_column(1));
     }
 }

@@ -1,16 +1,26 @@
-use super::cell::Cell;
+use std::ops;
+
+use super::row::Row;
 
 pub struct Column {
-    title: String,
-    cells: Vec<Cell>,
+    name: String,
+    rows: Vec<Row>,
 }
 
 impl Column {
-    pub fn new(title: String, cells: Vec<Cell>) -> Self {
-        Self { title, cells }
+    pub fn new(name: String, rows: Vec<Row>) -> Self {
+        Self { name, rows }
     }
 
-    pub fn cells_mut(&mut self) -> &mut Vec<Cell> {
-        &mut self.cells
+    pub fn name(&self) -> &str {
+        self.name.as_ref()
+    }
+
+    pub fn rows(&self) -> &[Row] {
+        self.rows.as_ref()
+    }
+
+    pub fn set_rows(&mut self, rows: Vec<Row>) {
+        self.rows = rows;
     }
 }
