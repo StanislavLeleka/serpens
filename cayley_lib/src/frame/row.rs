@@ -8,11 +8,19 @@ impl Row {
         Self { index, value }
     }
 
+    pub fn copy(&self) -> Row {
+        Row::new(self.index.clone(), self.value.clone())
+    }
+
     pub fn value(&self) -> f64 {
         self.value
     }
 
     pub fn set_value(&mut self, value: f64) {
         self.value = value;
+    }
+
+    pub fn index(&self) -> usize {
+        self.index
     }
 }

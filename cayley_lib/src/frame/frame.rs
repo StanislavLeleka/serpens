@@ -1,11 +1,8 @@
-use std::{
-    collections::HashMap,
-    ops::{self, Index},
-};
+use std::{collections::HashMap, ops::Index};
 
 use linear::matrix::matrix::Matrix;
 
-use super::{column::Column, row::Row};
+use super::column::Column;
 
 pub struct Frame {
     columns: Vec<Column>,
@@ -14,25 +11,10 @@ pub struct Frame {
 }
 
 impl Frame {
+    /// Creates a new [`Frame`].
     pub fn new(data: &Matrix, headers: Vec<String>) -> Frame {
-        let mut columns: Vec<Column> = Vec::with_capacity(headers.len());
-        for i in 0..headers.len() {
-            let values: Vec<&f64> = data.get_column(i);
-            let mut rows: Vec<Row> = Vec::with_capacity(values.len());
-
-            for j in 0..values.len() {
-                rows.push(Row::new(j, *values[j]));
-            }
-
-            let column: Column = Column::new(headers[i].clone(), rows);
-
-            columns.push(column);
-        }
-
-        let mut columns_map: HashMap<String, usize> = HashMap::new();
-        for c in 0..columns.len() {
-            columns_map.insert(columns[c].name().to_string(), c);
-        }
+        let columns: Vec<Column> = Self::create_columns(data, &headers);
+        let columns_map = Self::create_columns_map(&columns);
 
         Frame {
             columns,
@@ -41,6 +23,7 @@ impl Frame {
         }
     }
 
+    /// .
     pub fn get_column(&self, name: String) -> Option<&Column> {
         match self.columns_map.get(&name) {
             Some(i) => Some(&self.columns[*i]),
@@ -48,27 +31,121 @@ impl Frame {
         }
     }
 
-    pub fn adjusted_new_column(&mut self, name: &str) -> &Column {
-        let rows_len: usize = self.columns[0].rows().len();
-        let mut rows: Vec<Row> = Vec::with_capacity(rows_len);
-        for i in 0..rows_len {
-            rows.push(Row::new(i, 0.0));
+    /// .
+    pub fn get_column_mut(&mut self, name: String) -> Option<&mut Column> {
+        match self.columns_map.get(&name) {
+            Some(i) => Some(&mut self.columns[*i]),
+            None => None,
         }
-
-        let column: Column = Column::new(name.to_string(), rows);
-
-        self.columns.push(column);
-        self.columns_map
-            .insert(name.to_string(), self.columns.len() - 1);
-        &self.columns[self.columns.len() - 1]
     }
 
+    /// .
+    pub fn adjust_new_column(&mut self, name: &str, default_value: f64) -> Option<&Column> {
+        let column: Column = Column::new(
+            name.to_string(),
+            vec![&default_value; self.get_column_size()],
+        );
+
+        self.isert_column(column);
+        self.get_column(name.to_string())
+    }
+
+    /// .
+    ///
+    /// # Panics
+    ///
+    /// Panics if .
+    pub fn add(&mut self, column_name: &str, value: f64) {
+        match self.get_column_mut(column_name.to_string()) {
+            Some(column) => column
+                .rows_mut()
+                .iter_mut()
+                .for_each(|r| r.set_value(r.value() + value)),
+            None => panic!("invalid column name"),
+        }
+    }
+
+    /// .
+    pub fn head(&self, size: usize) -> Frame {
+        self.clone(|c, a| c.copy(a[0]), [size, 0])
+    }
+
+    /// .
+    pub fn range(&self, left: usize, right: usize) -> Frame {
+        self.clone(|c, a| c.copy_with_range(a[0], a[1]), [left, right])
+    }
+
+    /// Returns the column size of this [`Frame`].
+    pub fn get_column_size(&self) -> usize {
+        match self.columns().first() {
+            Some(column) => column.rows().len(),
+            None => 0,
+        }
+    }
+
+    /// Returns a reference to the headers of this [`Frame`].
     pub fn headers(&self) -> &[String] {
         self.headers.as_ref()
     }
 
+    /// Returns a reference to the columns of this [`Frame`].
     pub fn columns(&self) -> &Vec<Column> {
-        &self.columns
+        self.columns.as_ref()
+    }
+
+    /// .
+    fn create_columns(data: &Matrix, headers: &Vec<String>) -> Vec<Column> {
+        let mut columns: Vec<Column> = Vec::with_capacity(headers.len());
+        for i in 0..headers.len() {
+            let values: Vec<&f64> = data.get_column(i);
+            let column: Column = Column::new(headers[i].clone(), values);
+            columns.push(column);
+        }
+        columns
+    }
+
+    /// .
+    fn create_columns_map(columns: &Vec<Column>) -> HashMap<String, usize> {
+        let mut columns_map: HashMap<String, usize> = HashMap::new();
+        for c in 0..columns.len() {
+            columns_map.insert(columns[c].name().to_string(), c);
+        }
+        columns_map
+    }
+
+    /// .
+    fn isert_column(&mut self, column: Column) {
+        let name: String = column.name().to_string();
+
+        self.columns.push(column);
+        self.headers.push(name.clone());
+        self.columns_map.insert(name, self.columns.len() - 1);
+    }
+
+    /// Returns the copy of headers of this [`Frame`].
+    fn clone_headers(&self) -> Vec<String> {
+        self.headers.iter().map(|h| h.clone()).collect()
+    }
+
+    /// Returns the copy of columns map of this [`Frame`].
+    fn clone_columns_map(&self) -> HashMap<String, usize> {
+        let mut columns_map: HashMap<String, usize> = HashMap::new();
+        self.columns_map.iter().for_each(|(k, v)| {
+            columns_map.insert(k.clone(), v.clone());
+        });
+        columns_map
+    }
+
+    fn clone(&self, f: fn(&Column, [usize; 2]) -> Column, params: [usize; 2]) -> Frame {
+        let coumns_copy: Vec<Column> = self.columns.iter().map(|c| f(c, params)).collect();
+        let headers_copy: Vec<String> = self.clone_headers();
+        let columns_map_copy: HashMap<String, usize> = self.clone_columns_map();
+
+        Frame {
+            columns: coumns_copy,
+            headers: headers_copy,
+            columns_map: columns_map_copy,
+        }
     }
 }
 
@@ -137,8 +214,22 @@ mod test {
         let my_column_names = vec![String::from("temperature"), String::from("activity")];
 
         let mut frame: Frame = Frame::new(&my_data, my_column_names);
-        let new_col: &Column = frame.adjusted_new_column("adjusted");
+        let mut new_col: Option<&Column> = frame.adjust_new_column("adjusted", 2.0);
 
-        println!("{:?}", new_col);
+        println!("{:?}", new_col.unwrap());
+
+        new_col = frame.adjust_new_column("adjusted 2", 5.1);
+
+        println!("{:?}", new_col.unwrap());
+
+        let head = frame.head(3);
+
+        println!("{:?}", head);
+
+        let range = frame.range(2, 4);
+
+        println!("{:?}", range);
+
+        println!("{:?}", frame["temperature"]);
     }
 }

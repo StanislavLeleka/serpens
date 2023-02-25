@@ -28,7 +28,7 @@ impl PrintHelper {
     pub fn print_columns(frame: &Frame, f: &mut fmt::Formatter<'_>) {
         let columns: &Vec<Column> = frame.columns();
         for r in 0..columns[0].rows().len() {
-            write!(f, index_format!(), r).unwrap();
+            write!(f, index_format!(), columns[0].rows()[r].index()).unwrap();
             for c in 0..columns.len() {
                 write!(f, cell_format!(), columns[c].rows()[r].value()).unwrap();
             }
@@ -39,7 +39,7 @@ impl PrintHelper {
 
     pub fn print_column<'a>(column: &Column, f: &mut fmt::Formatter<'_>) {
         for y in 0..column.rows().len() {
-            write!(f, index_format!(), y).unwrap();
+            write!(f, index_format!(), column.rows()[y].index()).unwrap();
             write!(f, cell_format!(), column.rows()[y].value()).unwrap();
             write!(f, "{}\n", "").unwrap();
         }
