@@ -63,23 +63,26 @@ impl Matrix {
         )
     }
 
-    pub fn random(low: f64, high: f64, size: usize, dim: Dimension) -> Matrix {
-        let mut shape: Shape = Shape::new(size, 1, 0);
-        let data: Vec<f64>;
+    pub fn random(low: f64, high: f64, size: (usize, usize)) -> Matrix {
+        let mut shape: Shape = Shape::new(size.0, size.1, 0);
+        let dim: Dimension = if size.1 > 1 {
+            Dimension::TwoDim
+        } else {
+            Dimension::OneDim
+        };
 
-        match dim {
-            Dimension::OneDim => data = Self::gen_range(low, high, size),
-            Dimension::TwoDim => {
-                shape = Shape::new(size, size, 0);
-                data = Self::gen_range(low, high, size * size);
-            }
-            Dimension::ThreeDim => {
-                shape = Shape::new(size, size, size);
-                data = Self::gen_range(low, high, size * size * size);
-            }
+        let mut data: Vec<f64> = vec![];
+
+        if let (_, 1) = size {
+            data = Self::gen_range(low, high, size.0)
+        } else {
+            shape = Shape::new(size.0, size.1, 0);
+            (0..size.1).for_each(|_r| {
+                data.append(&mut Self::gen_range(low, high, size.0));
+            });
         }
 
-        Matrix::new(dim, size, shape, data)
+        Matrix::new(dim, size.0, shape, data)
     }
 
     pub fn get(&self, row: usize, col: usize) -> f64 {
@@ -210,19 +213,19 @@ mod test {
 
     #[test]
     fn test_random() {
-        let matrix: Matrix = Matrix::random(-2.0, 2.0, 4, Dimension::OneDim);
+        let matrix: Matrix = Matrix::random(-2.0, 2.0, (4, 1));
         println!("{:?}", &matrix);
 
-        let matrix: Matrix = Matrix::random(-2.0, 2.0, 4, Dimension::TwoDim);
+        let matrix: Matrix = Matrix::random(-2.0, 2.0, (4, 4));
         println!("{:?}", &matrix);
 
-        let matrix: Matrix = Matrix::random(-2.0, 2.0, 4, Dimension::ThreeDim);
-        println!("{:?}", &matrix);
+        //let matrix: Matrix = Matrix::random(-2.0, 2.0, 4, Dimension::ThreeDim);
+        //println!("{:?}", &matrix);
     }
 
     #[test]
     fn test_add() {
-        let mut matrix: Matrix = Matrix::random(-2.0, 2.0, 4, Dimension::TwoDim);
+        let mut matrix: Matrix = Matrix::random(-2.0, 2.0, (4, 4));
         println!("{:?}", &matrix);
 
         matrix = matrix + 2.0;
@@ -231,7 +234,7 @@ mod test {
         matrix = matrix * 3.0;
         println!("{:?}", &matrix);
 
-        matrix = matrix + Matrix::random(-2.0, 2.0, 4, Dimension::TwoDim);
+        matrix = matrix + Matrix::random(-2.0, 2.0, (4, 4));
         println!("{:?}", &matrix);
     }
 

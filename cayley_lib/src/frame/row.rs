@@ -12,7 +12,10 @@ impl Row {
         Row::new(self.index.clone(), self.value.clone())
     }
 
-    pub fn value(&self) -> f64 {
+    pub fn value(&self, round: bool) -> f64 {
+        if round {
+            return (self.value * 100.0).round() / 100.0;
+        }
         self.value
     }
 

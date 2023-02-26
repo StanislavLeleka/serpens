@@ -1,4 +1,7 @@
-use std::{collections::HashMap, ops::Index};
+use std::{
+    collections::HashMap,
+    ops::{Index, IndexMut},
+};
 
 use linear::matrix::matrix::Matrix;
 
@@ -46,7 +49,7 @@ impl Frame {
             vec![&default_value; self.get_column_size()],
         );
 
-        self.isert_column(column);
+        self.insert_column(column);
         self.get_column(name.to_string())
     }
 
@@ -60,14 +63,14 @@ impl Frame {
             Some(column) => column
                 .rows_mut()
                 .iter_mut()
-                .for_each(|r| r.set_value(r.value() + value)),
+                .for_each(|r| r.set_value(r.value(false) + value)),
             None => panic!("invalid column name"),
         }
     }
 
     /// .
     pub fn head(&self, size: usize) -> Frame {
-        self.clone(|c, a| c.copy(a[0]), [size, 0])
+        self.clone(|c, a| c.copy_with_range(0, a[0]), [size, 0])
     }
 
     /// .
@@ -114,7 +117,7 @@ impl Frame {
     }
 
     /// .
-    fn isert_column(&mut self, column: Column) {
+    pub fn insert_column(&mut self, column: Column) {
         let name: String = column.name().to_string();
 
         self.columns.push(column);
@@ -171,7 +174,7 @@ mod test {
     #[test]
     fn test_frame_init() {
         let my_data = Matrix::matrix2d(vec![
-            vec![0.0, 3.0],
+            vec![0.0, 3.011212121],
             vec![10.0, 7.0],
             vec![20.0, 9.0],
             vec![30.0, 14.0],
@@ -231,5 +234,12 @@ mod test {
         println!("{:?}", range);
 
         println!("{:?}", frame["temperature"]);
+
+        let mut a12 = frame["temperature"].add(&frame["activity"]);
+        a12.set_name(String::from("value11"));
+
+        frame.insert_column(a12);
+
+        println!("{:?}", frame);
     }
 }

@@ -1,4 +1,4 @@
-use std::ops;
+use std::ops::{self, Index};
 
 use super::row::Row;
 
@@ -16,17 +16,15 @@ impl Column {
         }
     }
 
-    pub fn copy(&self, take_rows: usize) -> Column {
-        let size: usize = take_rows % self.rows.len();
-        let mut rows: Vec<Row> = Vec::with_capacity(size);
-        for i in 0..size {
-            rows.push(self.rows[i].copy());
-        }
+    pub fn get_row(&self, index: usize) -> &Row {
+        &self.rows[index]
+    }
 
-        Column {
-            name: self.name.clone(),
-            rows,
-        }
+    pub fn copy(&mut self, column: Column) -> &Column {
+        self.set_name(column.name);
+        self.set_rows(column.rows);
+
+        self
     }
 
     pub fn copy_with_range(&self, left: usize, right: usize) -> Column {
@@ -37,6 +35,23 @@ impl Column {
 
         Column {
             name: self.name.clone(),
+            rows,
+        }
+    }
+
+    pub fn add(&self, rhs: &Column) -> Column {
+        let rows: Vec<Row> = self
+            .rows
+            .iter()
+            .zip(rhs.rows.iter())
+            .map(|(x, y)| {
+                let v = x.value(false) + y.value(false);
+                Row::new(x.index(), v)
+            })
+            .collect();
+
+        Column {
+            name: String::from("value"),
             rows,
         }
     }
@@ -59,5 +74,21 @@ impl Column {
             rows.push(Row::new(i, *values[i]));
         }
         rows
+    }
+
+    pub fn set_name(&mut self, name: String) {
+        self.name = name;
+    }
+
+    pub fn set_rows(&mut self, rows: Vec<Row>) {
+        self.rows = rows;
+    }
+}
+
+impl Index<usize> for Column {
+    type Output = Row;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.rows[index]
     }
 }

@@ -6,13 +6,13 @@ pub struct PrintHelper {}
 
 macro_rules! index_format {
     () => {
-        "{:<5} | "
+        "{:<3} "
     };
 }
 
 macro_rules! cell_format {
     () => {
-        "{:<15} | "
+        "{:>15} "
     };
 }
 
@@ -30,7 +30,7 @@ impl PrintHelper {
         for r in 0..columns[0].rows().len() {
             write!(f, index_format!(), columns[0].rows()[r].index()).unwrap();
             for c in 0..columns.len() {
-                write!(f, cell_format!(), columns[c].rows()[r].value()).unwrap();
+                write!(f, cell_format!(), columns[c].rows()[r].value(true)).unwrap();
             }
             write!(f, "{}\n", "").unwrap();
         }
@@ -40,7 +40,7 @@ impl PrintHelper {
     pub fn print_column<'a>(column: &Column, f: &mut fmt::Formatter<'_>) {
         for y in 0..column.rows().len() {
             write!(f, index_format!(), column.rows()[y].index()).unwrap();
-            write!(f, cell_format!(), column.rows()[y].value()).unwrap();
+            write!(f, cell_format!(), column.rows()[y].value(true)).unwrap();
             write!(f, "{}\n", "").unwrap();
         }
         writeln!(f, "{}", "").unwrap();
