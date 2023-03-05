@@ -108,6 +108,55 @@ impl Matrix {
         column
     }
 
+    pub fn dot(&self, matrix: &Matrix) -> Matrix {
+        if self.dim != matrix.dim {
+            panic!("dimensions of matrices should be same");
+        }
+
+        match self.dim {
+            Dimension::OneDim => {
+                let product: f64 = Self::vectors_dot(self.data(), matrix.data());
+                Matrix::new(Dimension::OneDim, 1, Shape::new(1, 1, 0), vec![product])
+            }
+            Dimension::TwoDim => todo!(),
+            Dimension::ThreeDim => todo!(),
+        }
+    }
+
+    pub fn mean(&self) -> f64 {
+        match self.dim {
+            Dimension::OneDim => {
+                self.data.iter().fold(0.0, |mut s, v| {
+                    s += v;
+                    s
+                }) / (self.data.len() as f64)
+            }
+            Dimension::TwoDim => todo!(),
+            Dimension::ThreeDim => todo!(),
+        }
+    }
+
+    pub fn sum(&self) -> f64 {
+        self.data.iter().fold(0.0, |mut s, v| {
+            s += v;
+            s
+        })
+    }
+
+    pub fn copy(&self) -> Matrix {
+        let data: Vec<f64> = self.data.iter().map(|d| d.clone()).collect::<Vec<f64>>();
+        Matrix::new(
+            self.dim.clone(),
+            self.size.clone(),
+            Shape::new(
+                self.shape.x().clone(),
+                self.shape.y().clone(),
+                self.shape.z().clone(),
+            ),
+            data,
+        )
+    }
+
     pub fn dim(&self) -> &Dimension {
         &self.dim
     }
@@ -131,6 +180,14 @@ impl Matrix {
     fn gen_range(low: f64, high: f64, size: usize) -> Vec<f64> {
         let mut rng: ThreadRng = rand::thread_rng();
         (0..size).map(|_| rng.gen_range(low..high)).collect()
+    }
+
+    fn vectors_dot(a: &[f64], b: &[f64]) -> f64 {
+        let mut product: f64 = 0.0;
+        for i in 0..a.len() {
+            product += a[i] * b[i];
+        }
+        return product;
     }
 }
 
