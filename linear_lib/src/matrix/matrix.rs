@@ -90,6 +90,11 @@ impl Matrix {
         self.data[index]
     }
 
+    pub fn set(&mut self, row: usize, col: usize, val: f64) {
+        let index: usize = row * self.shape.x() + col;
+        self.data[index] = val;
+    }
+
     pub fn get_row(&self, row: usize) -> Vec<&f64> {
         self.data()
             .iter()
@@ -141,6 +146,50 @@ impl Matrix {
             s += v;
             s
         })
+    }
+
+    pub fn transpose(&self) -> Matrix {
+        let mut transposed = self.copy();
+        transposed.set_data(vec![0.0; self.data.len()]);
+
+        for r in 0..self.shape.y() {
+            for c in 0..self.shape.x() {
+                transposed.set(r, c, self.get(c, r));
+            }
+        }
+
+        transposed
+    }
+
+    pub fn dot_matrix(left: &Matrix, right: &Matrix) -> Matrix {
+        let mut copy: Matrix = left.copy();
+        copy.set_data(vec![0.0; left.data.len()]);
+
+        for i in 0..left.shape().y() {
+            for j in 0..right.shape().x() {
+                for k in 0..left.shape().x() {
+                    let val: f64 = copy.get(i, j) + left.get(i, k) * right.get(k, j);
+                    copy.set(i, j, val);
+                }
+            }
+        }
+        copy
+    }
+
+    pub fn dot_vector(matrix: &Matrix, vector: &Matrix) -> Matrix {
+        let mut copy: Matrix = vector.copy();
+        copy.set_data(vec![0.0; vector.data.len()]);
+
+        for i in 0..matrix.shape().y() {
+            for j in 0..vector.shape().x() {
+                for k in 0..matrix.shape().x() {
+                    let val: f64 = copy.get(i, j) + matrix.get(i, k) * vector.get(k, j);
+                    copy.set(i, j, val);
+                }
+            }
+        }
+
+        copy
     }
 
     pub fn copy(&self) -> Matrix {
@@ -266,6 +315,47 @@ mod test {
         ];
         let matrix: Matrix = Matrix::matrix3d(elements);
         println!("{:?}", &matrix);
+    }
+
+    #[test]
+    fn test_transpose() {
+        let elements: Vec<Vec<f64>> = vec![
+            vec![1.2, 2.4, 3.5],
+            vec![4.7, 6.1, 7.2],
+            vec![7.0, 1.0, 7.5],
+        ];
+        let mut matrix: Matrix = Matrix::matrix2d(elements);
+        println!("{:?}", &matrix);
+        let transposed: Matrix = matrix.transpose();
+        println!("{:?}", transposed);
+    }
+
+    #[test]
+    fn test_dot_matrix() {
+        let left: Matrix = Matrix::matrix2d(vec![
+            vec![1.2, 2.4, 3.5],
+            vec![4.7, 6.1, 7.2],
+            vec![7.0, 1.0, 7.5],
+        ]);
+        let right: Matrix = Matrix::matrix2d(vec![
+            vec![1.2, 6.3, 3.5],
+            vec![2.2, 4.1, 4.2],
+            vec![5.4, 0.0, 9.5],
+        ]);
+        let p: Matrix = Matrix::dot_matrix(&left, &right);
+        println!("{:?}", p);
+    }
+
+    #[test]
+    fn test_dot_vector() {
+        let matrix: Matrix = Matrix::matrix2d(vec![
+            vec![1.2, 2.4, 3.5],
+            vec![4.7, 6.1, 7.2],
+            vec![7.0, 1.0, 7.5],
+        ]);
+        let vector: Matrix = Matrix::matrix(vec![1.2, 6.3, 3.5]);
+        let p: Matrix = Matrix::dot_vector(&matrix, &vector);
+        println!("{:?}", p);
     }
 
     #[test]
