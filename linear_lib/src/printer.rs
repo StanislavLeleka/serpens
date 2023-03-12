@@ -1,15 +1,15 @@
 use std::fmt;
 
-use crate::matrix::{dimension::Dimension, matrix::Matrix};
+use crate::matrix::{dimension::Dimension, matrix_old::Matrixold};
 
-impl fmt::Debug for Matrix {
+impl fmt::Debug for Matrixold {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fn print_2d_matrix(matrix: &Matrix, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fn print_2d_matrix(matrix: &Matrixold, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             let mut skip: usize = 0;
             print_rows(matrix, matrix.shape().y(), &mut skip, f)
         }
 
-        fn print_3d_matrix(matrix: &Matrix, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fn print_3d_matrix(matrix: &Matrixold, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             write!(f, "{}\n", "[").unwrap();
 
             let mut skip: usize = 0;
@@ -21,7 +21,7 @@ impl fmt::Debug for Matrix {
         }
 
         fn print_rows(
-            matrix: &Matrix,
+            matrix: &Matrixold,
             rows: usize,
             skip: &mut usize,
             f: &mut fmt::Formatter<'_>,

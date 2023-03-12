@@ -3,7 +3,7 @@ use std::{
     ops::{Index, IndexMut},
 };
 
-use linear::matrix::matrix::Matrix;
+use linear::matrix::matrix_old::Matrixold;
 
 use super::column::Column;
 
@@ -15,7 +15,7 @@ pub struct Frame {
 
 impl Frame {
     /// Creates a new [`Frame`].
-    pub fn new(data: &Matrix, headers: Vec<String>) -> Frame {
+    pub fn new(data: &Matrixold, headers: Vec<String>) -> Frame {
         let columns: Vec<Column> = Self::create_columns(data, &headers);
         let columns_map = Self::create_columns_map(&columns);
 
@@ -97,7 +97,7 @@ impl Frame {
     }
 
     /// .
-    fn create_columns(data: &Matrix, headers: &Vec<String>) -> Vec<Column> {
+    fn create_columns(data: &Matrixold, headers: &Vec<String>) -> Vec<Column> {
         let mut columns: Vec<Column> = Vec::with_capacity(headers.len());
         for i in 0..headers.len() {
             let values: Vec<&f64> = data.get_column(i);
@@ -165,7 +165,7 @@ impl Index<&str> for Frame {
 
 #[cfg(test)]
 mod test {
-    use linear::matrix::matrix::Matrix;
+    use linear::matrix::matrix_old::Matrixold;
 
     use crate::frame::column::Column;
 
@@ -173,7 +173,7 @@ mod test {
 
     #[test]
     fn test_frame_init() {
-        let my_data = Matrix::matrix2d(vec![
+        let my_data = Matrixold::matrix2d(vec![
             vec![0.0, 3.011212121],
             vec![10.0, 7.0],
             vec![20.0, 9.0],
@@ -189,7 +189,7 @@ mod test {
 
     #[test]
     fn get_frame_column() {
-        let my_data = Matrix::matrix2d(vec![
+        let my_data = Matrixold::matrix2d(vec![
             vec![0.0, 3.0],
             vec![10.0, 7.0],
             vec![20.0, 9.0],
@@ -207,7 +207,7 @@ mod test {
 
     #[test]
     fn test_adjusted_new_column() {
-        let my_data = Matrix::matrix2d(vec![
+        let my_data = Matrixold::matrix2d(vec![
             vec![0.0, 3.0],
             vec![10.0, 7.0],
             vec![20.0, 9.0],
