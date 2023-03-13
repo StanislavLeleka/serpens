@@ -3,7 +3,7 @@ use std::fmt::{self, Display};
 pub struct PrintHelper {}
 
 impl PrintHelper {
-    pub fn print_col<T>(elements: &[T], max: T, f: &mut fmt::Formatter<'_>)
+    pub fn print_col<T>(elements: &[T], max: T)
     where
         T: Sized + Display + Copy,
     {

@@ -1,6 +1,8 @@
 use std::ops::{AddAssign, Mul};
 
-use rand::{distributions::uniform::SampleUniform, rngs::ThreadRng, Rng};
+use rand::distributions::uniform::SampleUniform;
+
+use crate::generator::Generator;
 
 use super::shape::Shape;
 
@@ -11,7 +13,7 @@ pub struct Vector<T> {
 
 impl<T> Vector<T>
 where
-    T: Mul<Output = T> + AddAssign + Copy + Sized + PartialOrd,
+    T: Mul<Output = T> + AddAssign + Copy + Sized + PartialOrd + SampleUniform,
 {
     pub fn new(elements: Vec<T>, shape: Shape) -> Self {
         Self { elements, shape }
@@ -29,15 +31,9 @@ where
         }
     }
 
-    pub fn random(low: T, high: T, size: usize, shape: Shape) -> Vector<T>
-    where
-        T: SampleUniform,
-    {
+    pub fn random(low: T, high: T, size: usize, shape: Shape) -> Vector<T> {
         Vector {
-            elements: {
-                let mut rng: ThreadRng = rand::thread_rng();
-                (0..size).map(|_| rng.gen_range(low..high)).collect()
-            },
+            elements: Generator::random_elements(low, high, size),
             shape,
         }
     }
@@ -59,11 +55,11 @@ where
             return Err("invalid vectors shape");
         }
 
-        let mut mul: T = init;
+        let mut product: T = init;
         for i in 0..self.elements.len() {
-            mul += self.elements[i] * right.elements[i];
+            product += self.elements[i] * right.elements[i];
         }
-        Ok(mul)
+        Ok(product)
     }
 }
 

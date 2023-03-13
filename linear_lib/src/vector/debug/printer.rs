@@ -9,7 +9,7 @@ impl fmt::Debug for Vector<i32> {
         if let Shape::Row = self.shape() {
             println!("{:?}", self.elements())
         } else {
-            PrintHelper::print_col(self.elements(), *self.elements().iter().max().unwrap(), f)
+            PrintHelper::print_col(self.elements(), *self.elements().iter().max().unwrap())
         }
         Ok(())
     }
@@ -24,7 +24,7 @@ impl fmt::Debug for Vector<f64> {
                 .elements()
                 .iter()
                 .fold(f64::NEG_INFINITY, |a, &b| a.max(b));
-            PrintHelper::print_col(self.elements(), max, f)
+            PrintHelper::print_col(self.elements(), max)
         }
         Ok(())
     }
