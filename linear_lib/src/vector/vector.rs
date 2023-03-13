@@ -1,8 +1,6 @@
-use std::ops::{AddAssign, Mul};
+use std::ops::Mul;
 
-use rand::distributions::uniform::SampleUniform;
-
-use crate::generator::Generator;
+use crate::{generator::Generator, num::Num};
 
 use super::shape::Shape;
 
@@ -13,7 +11,7 @@ pub struct Vector<T> {
 
 impl<T> Vector<T>
 where
-    T: Mul<Output = T> + AddAssign + Copy + Sized + PartialOrd + SampleUniform,
+    T: Mul<Output = T> + Num,
 {
     pub fn new(elements: Vec<T>, shape: Shape) -> Self {
         Self { elements, shape }
@@ -38,15 +36,7 @@ where
         }
     }
 
-    pub fn elements(&self) -> &[T] {
-        self.elements.as_ref()
-    }
-
-    pub fn shape(&self) -> &Shape {
-        &self.shape
-    }
-
-    fn inner(&self, right: &Vector<T>, init: T) -> Result<T, &'static str> {
+    pub fn dot(&self, right: &Vector<T>) -> Result<T, &'static str> {
         if self.size() != right.size() {
             return Err("invalid vector size");
         }
@@ -55,23 +45,20 @@ where
             return Err("invalid vectors shape");
         }
 
-        let mut product: T = init;
+        let mut product: T = T::zero();
         for i in 0..self.elements.len() {
             product += self.elements[i] * right.elements[i];
         }
+
         Ok(product)
     }
-}
 
-impl Vector<i32> {
-    pub fn dot(&self, right: &Vector<i32>) -> Result<i32, &'static str> {
-        return self.inner(right, 0);
+    pub fn elements(&self) -> &[T] {
+        self.elements.as_ref()
     }
-}
 
-impl Vector<f64> {
-    pub fn dot(&self, right: &Vector<f64>) -> Result<f64, &'static str> {
-        return self.inner(right, 0.0);
+    pub fn shape(&self) -> &Shape {
+        &self.shape
     }
 }
 

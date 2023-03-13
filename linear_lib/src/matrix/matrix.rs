@@ -1,6 +1,7 @@
-use rand::distributions::uniform::SampleUniform;
+use std::ops::Div;
 
 use crate::generator::Generator;
+use crate::num::Num;
 
 use super::size::Size;
 
@@ -11,7 +12,7 @@ pub struct Matrix<T> {
 
 impl<T> Matrix<T>
 where
-    T: Copy + Sized + PartialOrd + SampleUniform,
+    T: Num,
 {
     pub fn new(data: &Vec<Vec<T>>) -> Self {
         Matrix {
@@ -41,8 +42,31 @@ where
             .collect()
     }
 
+    pub fn get(&self, row: usize, col: usize) -> T {
+        self.elements[self.get_index(row, col)]
+    }
+
+    pub fn set(&mut self, row: usize, col: usize, val: T) {
+        let index: usize = self.get_index(row, col);
+        self.elements[index] = val;
+    }
+
     pub fn size(&self) -> &Size {
         &self.size
+    }
+
+    pub fn sum(&self) -> T {
+        self.fold(T::zero(), |mut a, &b| {
+            a += b;
+            a
+        })
+    }
+
+    pub fn mean(&self) -> T
+    where
+        T: Div<Output = T>,
+    {
+        self.sum() / T::from_usize(self.elements.len())
     }
 
     fn to_row_major(data: &Vec<Vec<T>>) -> Vec<T> {
@@ -57,6 +81,14 @@ where
         let rows: usize = data.len();
         let cols: usize = data.first().unwrap().len();
         Size::new(rows, cols)
+    }
+
+    fn get_index(&self, row: usize, col: usize) -> usize {
+        row * self.size().cols() + col
+    }
+
+    fn fold(&self, init: T, f: fn(T, &T) -> T) -> T {
+        self.elements.iter().fold(init, f)
     }
 }
 
@@ -77,10 +109,6 @@ impl Matrix<f64> {
 
     pub fn min(&self) -> f64 {
         self.fold(f64::INFINITY, |a, &b| a.min(b))
-    }
-
-    fn fold(&self, init: f64, f: fn(f64, &f64) -> f64) -> f64 {
-        self.elements.iter().fold(init, f)
     }
 }
 

@@ -1,11 +1,11 @@
-use std::fmt::{self, Display};
+use crate::num::Num;
 
 pub struct PrintHelper {}
 
 impl PrintHelper {
     pub fn print_col<T>(elements: &[T], max: T)
     where
-        T: Sized + Display + Copy,
+        T: Num,
     {
         if elements.len() == 0 {
             println!("[]");

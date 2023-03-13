@@ -1,16 +1,9 @@
-use std::fmt::{Debug, Display};
-
-use rand::distributions::uniform::SampleUniform;
-
-use crate::matrix::matrix::Matrix;
+use crate::{matrix::matrix::Matrix, num::Num};
 
 pub struct PrintHelper {}
 
 impl PrintHelper {
-    pub fn print_rows<T>(matrix: &Matrix<T>, max: T)
-    where
-        T: Debug + Display + Copy + Sized + PartialOrd + SampleUniform,
-    {
+    pub fn print_rows<T: Num>(matrix: &Matrix<T>, max: T) {
         let width: usize = max.to_string().len();
         for r in 0..matrix.size().rows() {
             let row: Vec<&T> = matrix.get_row(r);
