@@ -28,8 +28,8 @@ impl Size {
 impl Clone for Size {
     fn clone(&self) -> Self {
         Self {
-            rows: self.rows.clone(),
-            cols: self.cols.clone(),
+            rows: self.rows,
+            cols: self.cols,
         }
     }
 }

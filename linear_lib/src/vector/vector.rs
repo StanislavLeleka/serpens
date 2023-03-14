@@ -1,6 +1,10 @@
 use std::ops::{Add, Mul};
 
-use crate::{generator::Generator, num::Num};
+use crate::{
+    generator::Generator,
+    matrix::{matrix::Matrix, size::Size},
+    num::Num,
+};
 
 use super::shape::Shape;
 
@@ -40,13 +44,23 @@ where
         self.elements.get(index)
     }
 
-    pub fn dot(&self, right: &Vector<T>) -> Result<T, &'static str> {
-        if self.size() != right.size() {
-            return Err("invalid vector size");
+    pub fn equals(&self, other: &Vector<T>) -> bool {
+        if self.size() != other.size() {
+            return false;
         }
 
-        if self.shape != Shape::Row || right.shape != Shape::Col {
-            return Err("invalid vectors shape");
+        for i in 0..self.size() {
+            if self.get(i).unwrap() != other.get(i).unwrap() {
+                return false;
+            }
+        }
+
+        true
+    }
+
+    pub fn dot(&self, right: &Vector<T>) -> Result<T, &'static str> {
+        if self.size() != right.size() {
+            return Err("invalid vectors size");
         }
 
         let mut product: T = T::zero();
@@ -57,16 +71,21 @@ where
         Ok(product)
     }
 
-    pub fn outer(&self, right: &Vector<T>) -> Result<T, &'static str> {
-        if self.size() != right.size() {
-            return Err("invalid vector size");
+    pub fn outer(&self, right: &Vector<T>) -> Matrix<T> {
+        let mut matrix = Matrix {
+            elements: vec![T::zero(); self.size() * right.size()],
+            size: Size::new(self.size(), right.size()),
+        };
+
+        for row in 0..self.size() {
+            for col in 0..matrix.size().cols() {
+                let mut cell: T = T::zero();
+                cell += *self.get(row).unwrap() * *right.get(col).unwrap();
+                matrix.set(row, col, cell);
+            }
         }
 
-        if self.shape != Shape::Col || right.shape != Shape::Row {
-            return Err("invalid vectors shape");
-        }
-
-        todo!()
+        matrix
     }
 
     pub fn mul(&mut self, val: T) {
@@ -102,7 +121,7 @@ where
 
     fn mul(self, rhs: T) -> Self::Output {
         let elements = self.map(rhs, |a, &b| a * b);
-        Vector::new(elements, self.shape().clone())
+        Vector::new(elements, *self.shape())
     }
 }
 
@@ -114,13 +133,13 @@ where
 
     fn add(self, rhs: T) -> Self::Output {
         let elements = self.map(rhs, |a, &b| a + b);
-        Vector::new(elements, self.shape().clone())
+        Vector::new(elements, *self.shape())
     }
 }
 
 #[cfg(test)]
 mod test {
-    use crate::vector::shape::Shape;
+    use crate::{matrix::matrix::Matrix, vector::shape::Shape};
 
     use super::Vector;
 
@@ -146,15 +165,14 @@ mod test {
     #[test]
     fn test_dot() {
         let left: Vector<i32> = Vector::new(ELEMENTS.to_vec(), Shape::Row);
-        let mut right: Vector<i32> = Vector::new(ELEMENTS.to_vec(), Shape::Col);
+        let right: Vector<i32> = Vector::new(ELEMENTS.to_vec(), Shape::Col);
 
-        let mut dot: Result<i32, &str> = left.dot(&right);
+        let dot: Result<i32, &str> = left.dot(&right);
         assert_eq!(dot.unwrap(), 88);
 
-        right.transpose();
-
-        dot = left.dot(&right);
-        assert_eq!(dot.unwrap_err(), "invalid vectors shape");
+        //right.transpose();
+        //dot = left.dot(&right);
+        //assert_eq!(dot.unwrap_err(), "invalid vectors shape");
     }
 
     #[test]
@@ -207,5 +225,29 @@ mod test {
         for i in 0..mul_vec.size() {
             assert_eq!(*mul_vec.get(i).unwrap(), ELEMENTS[i] + 5);
         }
+    }
+
+    #[test]
+    fn test_outer() {
+        let left: Vector<i32> = Vector::new(vec![3, 2, 1], Shape::Col);
+        let right: Vector<i32> = Vector::new(vec![7, 2, 3, 1], Shape::Row);
+        let outer_p: Matrix<i32> = left.outer(&right);
+        let expected: Matrix<i32> = Matrix::new(&vec![
+            vec![21, 6, 9, 3],
+            vec![14, 4, 6, 2],
+            vec![7, 2, 3, 1],
+        ]);
+
+        assert!(outer_p.equals(&expected));
+    }
+
+    #[test]
+    fn test_equals() {
+        let vec1: Vector<i32> = Vector::new(ELEMENTS.to_vec(), Shape::Row);
+        let vec2: Vector<i32> = Vector::new(ELEMENTS.to_vec(), Shape::Row);
+        let vec3: Vector<i32> = Vector::new(vec![3, 2, 1], Shape::Col);
+
+        assert!(vec1.equals(&vec2));
+        assert!(!vec1.equals(&vec3));
     }
 }

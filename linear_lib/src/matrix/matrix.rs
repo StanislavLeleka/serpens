@@ -2,12 +2,14 @@ use std::ops::{Add, Div, Mul};
 
 use crate::generator::Generator;
 use crate::num::Num;
+use crate::vector::shape::Shape;
+use crate::vector::vector::Vector;
 
 use super::size::Size;
 
 pub struct Matrix<T> {
-    elements: Vec<T>,
-    size: Size,
+    pub(crate) elements: Vec<T>,
+    pub(crate) size: Size,
 }
 
 impl<T> Matrix<T>
@@ -75,6 +77,53 @@ where
         Ok(matrix)
     }
 
+    pub fn vector_product(&self, vector: &Vector<T>) -> Result<Vector<T>, &'static str> {
+        if self.size().cols() != vector.size() {
+            return Err("product is not defined");
+        }
+
+        let mut elements: Vec<T> = vec![T::zero(); self.size().rows()];
+        for (r, element) in elements.iter_mut().enumerate().take(self.size().rows()) {
+            for c in 0..self.size().cols() {
+                *element += *self.get(r, c).unwrap() * *vector.get(c).unwrap()
+            }
+        }
+
+        Ok(Vector::new(elements, Shape::Col))
+    }
+
+    pub fn add(&self, right: &Matrix<T>) -> Result<Matrix<T>, &'static str> {
+        match self.add_with_coeficient(right, T::one()) {
+            Ok(elements) => Ok(Matrix {
+                elements,
+                size: self.size().clone(),
+            }),
+            Err(e) => Err(e),
+        }
+    }
+
+    pub fn subtract(&self, right: &Matrix<T>) -> Result<Matrix<T>, &'static str> {
+        match self.add_with_coeficient(right, T::minus_one()) {
+            Ok(elements) => Ok(Matrix {
+                elements,
+                size: self.size().clone(),
+            }),
+            Err(e) => Err(e),
+        }
+    }
+
+    pub fn scalar(&self, val: T) -> Matrix<T> {
+        let mut elements: Vec<T> = vec![T::zero(); self.elements.len()];
+        for i in 0..self.elements.len() {
+            elements[i] = self.elements[i] * val;
+        }
+
+        Matrix {
+            elements,
+            size: self.size().clone(),
+        }
+    }
+
     pub fn equals(&self, matrix: &Matrix<T>) -> bool {
         if self.elements.len() != matrix.elements.len() {
             return false;
@@ -124,7 +173,15 @@ where
         self.sum() / T::from_usize(self.elements.len())
     }
 
-    fn to_row_major(data: &Vec<Vec<T>>) -> Vec<T> {
+    pub fn order(&self) -> usize {
+        self.size().rows() * self.size().cols()
+    }
+
+    fn has_same_order(&self, other: &Matrix<T>) -> bool {
+        self.order() == other.order()
+    }
+
+    fn to_row_major(data: &[Vec<T>]) -> Vec<T> {
         data.iter().fold(vec![], |mut res, el| {
             let mut row = el.clone();
             res.append(&mut row);
@@ -145,15 +202,32 @@ where
     fn fold(&self, init: T, f: fn(T, &T) -> T) -> T {
         self.elements.iter().fold(init, f)
     }
+
+    fn add_with_coeficient(
+        &self,
+        right: &Matrix<T>,
+        coeficient: T,
+    ) -> Result<Vec<T>, &'static str> {
+        if !self.has_same_order(right) {
+            return Err("matrices must have the same order");
+        }
+
+        let mut elements: Vec<T> = vec![T::zero(); self.elements.len()];
+        for i in 0..self.elements.len() {
+            elements[i] = self.elements[i] + (coeficient * right.elements[i]);
+        }
+
+        Ok(elements)
+    }
 }
 
 impl Matrix<i32> {
     pub fn max(&self) -> i32 {
-        self.elements.iter().max().unwrap().clone()
+        *self.elements.iter().max().unwrap()
     }
 
     pub fn min(&self) -> i32 {
-        self.elements.iter().min().unwrap().clone()
+        *self.elements.iter().min().unwrap()
     }
 }
 
@@ -169,6 +243,9 @@ impl Matrix<f64> {
 
 #[cfg(test)]
 mod test {
+
+    use crate::vector::{shape::Shape, vector::Vector};
+
     use super::Matrix;
 
     #[test]
@@ -270,6 +347,68 @@ mod test {
         let res: Matrix<i32> = matrix1.product(&matrix2).unwrap();
 
         assert!(res.equals(&get_default_matrix_product()))
+    }
+
+    #[test]
+    fn test_add() {
+        let left: Matrix<f64> = get_default_matrix();
+        let right: Matrix<f64> = get_default_matrix();
+        let result: Result<Matrix<f64>, &str> = left.add(&right);
+        let expected: Matrix<f64> = Matrix::new(&vec![
+            vec![2.4, 4.8, 7.0],
+            vec![9.4, 12.2, 14.4],
+            vec![14.0, 2.0, 15.0],
+        ]);
+
+        match result {
+            Ok(r) => assert!(r.equals(&expected)),
+            Err(_) => panic!("error durin addition of matrices"),
+        }
+    }
+
+    #[test]
+    fn test_subtraction() {
+        let left: Matrix<f64> = get_default_matrix();
+        let right: Matrix<f64> = get_default_matrix();
+        let result: Result<Matrix<f64>, &str> = left.subtract(&right);
+        let expected: Matrix<f64> = Matrix::new(&vec![
+            vec![0.0, 0.0, 0.0],
+            vec![0.0, 0.0, 0.0],
+            vec![0.0, 0.0, 0.0],
+        ]);
+
+        match result {
+            Ok(r) => assert!(r.equals(&expected)),
+            Err(_) => panic!("error during addition of matrices"),
+        }
+    }
+
+    #[test]
+    fn test_scalar() {
+        let matrix: Matrix<f64> = get_default_matrix();
+        let result: Matrix<f64> = matrix.scalar(3.0);
+        let expected: Matrix<f64> = Matrix::new(&vec![
+            vec![3.6, 7.2, 10.5],
+            vec![14.1, 18.3, 21.6],
+            vec![21.0, 3.0, 22.5],
+        ]);
+
+        for i in 0..result.elements.len() {
+            assert!(expected.elements[i] - result.elements[i] < 0.00001);
+        }
+    }
+
+    #[test]
+    fn test_vector_product() {
+        let matrix: Matrix<i32> = Matrix::new(&vec![vec![1, -1, 2], vec![0, -3, 1]]);
+        let vector: Vector<i32> = Vector::new(vec![2, 1, 0], Shape::Row);
+        let product: Result<Vector<i32>, &str> = matrix.vector_product(&vector);
+        let expected: Vector<i32> = Vector::new(vec![1, -3], Shape::Col);
+
+        match product {
+            Ok(p) => assert!(p.equals(&expected)),
+            Err(_) => panic!("error during vector product"),
+        }
     }
 
     fn get_default_matrix() -> Matrix<f64> {
