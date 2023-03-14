@@ -1,437 +1,440 @@
-use super::{dimension::Dimension, shape::Shape};
-use rand::{rngs::ThreadRng, Rng};
-use std::ops;
+use std::ops::{Add, Div, Mul};
 
-pub struct Matrix {
-    dim: Dimension,
-    size: usize,
-    shape: Shape,
-    data: Vec<f64>,
+use crate::generator::Generator;
+use crate::num::Num;
+use crate::vector::shape::Shape;
+use crate::vector::vector::Vector;
+
+use super::size::Size;
+
+pub struct Matrix<T> {
+    pub(crate) elements: Vec<T>,
+    pub(crate) size: Size,
 }
 
-impl Matrix {
-    fn new(dim: Dimension, size: usize, shape: Shape, data: Vec<f64>) -> Self {
-        Self {
-            dim,
-            size,
-            shape,
-            data,
+impl<T> Matrix<T>
+where
+    T: Mul<Output = T> + Add<Output = T> + Num,
+{
+    pub fn new(data: &Vec<Vec<T>>) -> Self {
+        Matrix {
+            elements: Self::to_row_major(data),
+            size: Self::get_size(data),
         }
     }
 
-    pub fn matrix(elements: Vec<f64>) -> Matrix {
-        let size: usize = elements.len();
-        let shape: Shape = Shape::new(1, size, 0);
-        Self::new(Dimension::OneDim, size, shape, elements)
-    }
-
-    pub fn matrix2d(elements: Vec<Vec<f64>>) -> Matrix {
-        let size: usize = elements[0].len();
-        let shape: Shape = Shape::new(size, elements.len(), 0);
-        let mut data: Vec<f64> = vec![];
-
-        elements
-            .into_iter()
-            .for_each(|mut row: Vec<f64>| data.append(&mut row));
-
-        Self::new(Dimension::TwoDim, size, shape, data)
-    }
-
-    pub fn matrix3d(elements: Vec<Vec<Vec<f64>>>) -> Matrix {
-        let size: usize = elements[0][0].len();
-        let shape: Shape = Shape::new(size, elements[0].len(), elements.len());
-        let mut data: Vec<f64> = vec![];
-
-        elements.into_iter().for_each(|row: Vec<Vec<f64>>| {
-            row.into_iter()
-                .for_each(|mut inner: Vec<f64>| data.append(&mut inner));
-        });
-
-        Self::new(Dimension::ThreeDim, size, shape, data)
-    }
-
-    pub fn range(left: usize, right: usize) -> Matrix {
-        let mut data: Vec<f64> = vec![];
-        for i in left..(right + 1) {
-            data.push(i as f64);
+    pub fn random(low: T, high: T, rows: usize, cols: usize) -> Matrix<T> {
+        let mut elements: Vec<T> = vec![];
+        for _row in 0..rows {
+            elements.append(&mut Generator::random_elements(low, high, cols));
         }
-        Self::new(
-            Dimension::OneDim,
-            data.len(),
-            Shape::new(data.len(), 1, 0),
-            data,
-        )
+
+        Matrix {
+            elements,
+            size: Size::new(rows, cols),
+        }
     }
 
-    pub fn random(low: f64, high: f64, size: (usize, usize)) -> Matrix {
-        let mut shape: Shape = Shape::new(size.0, size.1, 0);
-        let dim: Dimension = if size.1 > 1 {
-            Dimension::TwoDim
-        } else {
-            Dimension::OneDim
+    pub fn transpose(&self) -> Matrix<T> {
+        let mut elements: Vec<T> = vec![T::zero(); self.elements.len()];
+        let rows: usize = self.size().rows();
+        let cols: usize = self.size().cols();
+
+        for i in 0..rows {
+            for j in 0..cols {
+                elements[j * rows + i] = self.elements[i * cols + j];
+            }
+        }
+
+        Matrix {
+            elements,
+            size: Size::new(rows, cols),
+        }
+    }
+
+    pub fn product(&self, right: &Matrix<T>) -> Result<Matrix<T>, &'static str> {
+        if self.size().cols() * right.size().cols() != right.elements.len() {
+            return Err("product is not defined");
+        }
+
+        let elements: Vec<T> = vec![T::zero(); self.size().rows() * right.size().cols()];
+        let rows = elements.len() / right.size().cols();
+        let mut matrix = Matrix {
+            elements,
+            size: Size::new(rows, right.size().cols()),
         };
 
-        let mut data: Vec<f64> = vec![];
-
-        if let (_, 1) = size {
-            data = Self::gen_range(low, high, size.0)
-        } else {
-            shape = Shape::new(size.0, size.1, 0);
-            (0..size.1).for_each(|_r| {
-                data.append(&mut Self::gen_range(low, high, size.0));
-            });
+        for row in 0..rows {
+            for col in 0..matrix.size().cols() {
+                let mut cell: T = T::zero();
+                for i in 0..right.size().rows() {
+                    cell += *self.get(row, i).unwrap() * *right.get(i, col).unwrap();
+                }
+                matrix.set(row, col, cell);
+            }
         }
 
-        Matrix::new(dim, size.0, shape, data)
+        Ok(matrix)
     }
 
-    pub fn get(&self, row: usize, col: usize) -> f64 {
-        let index: usize = row * self.shape.x() + col;
-        self.data[index]
+    pub fn vector_product(&self, vector: &Vector<T>) -> Result<Vector<T>, &'static str> {
+        if self.size().cols() != vector.size() {
+            return Err("product is not defined");
+        }
+
+        let mut elements: Vec<T> = vec![T::zero(); self.size().rows()];
+        for (r, element) in elements.iter_mut().enumerate().take(self.size().rows()) {
+            for c in 0..self.size().cols() {
+                *element += *self.get(r, c).unwrap() * *vector.get(c).unwrap()
+            }
+        }
+
+        Ok(Vector::new(elements, Shape::Col))
     }
 
-    pub fn set(&mut self, row: usize, col: usize, val: f64) {
-        let index: usize = row * self.shape.x() + col;
-        self.data[index] = val;
+    pub fn add(&self, right: &Matrix<T>) -> Result<Matrix<T>, &'static str> {
+        match self.add_with_coeficient(right, T::one()) {
+            Ok(elements) => Ok(Matrix {
+                elements,
+                size: self.size().clone(),
+            }),
+            Err(e) => Err(e),
+        }
     }
 
-    pub fn get_row(&self, row: usize) -> Vec<&f64> {
-        self.data()
+    pub fn subtract(&self, right: &Matrix<T>) -> Result<Matrix<T>, &'static str> {
+        match self.add_with_coeficient(right, T::minus_one()) {
+            Ok(elements) => Ok(Matrix {
+                elements,
+                size: self.size().clone(),
+            }),
+            Err(e) => Err(e),
+        }
+    }
+
+    pub fn scalar(&self, val: T) -> Matrix<T> {
+        let mut elements: Vec<T> = vec![T::zero(); self.elements.len()];
+        for i in 0..self.elements.len() {
+            elements[i] = self.elements[i] * val;
+        }
+
+        Matrix {
+            elements,
+            size: self.size().clone(),
+        }
+    }
+
+    pub fn equals(&self, matrix: &Matrix<T>) -> bool {
+        if self.elements.len() != matrix.elements.len() {
+            return false;
+        }
+
+        for i in 0..self.elements.len() {
+            if self.elements[i] != matrix.elements[i] {
+                return false;
+            }
+        }
+        true
+    }
+
+    pub fn get_row(&self, row: usize) -> Vec<&T> {
+        self.elements
             .iter()
-            .skip(row * self.size)
-            .take(self.size)
+            .skip(row * self.size.cols())
+            .take(self.size.cols())
             .into_iter()
             .collect()
     }
 
-    pub fn get_column(&self, col: usize) -> Vec<&f64> {
-        let mut column: Vec<&f64> = vec![&0.0; self.shape.y()];
-        for i in 0..self.shape.y() {
-            let index: usize = col + (i * self.size);
-            column[i] = &self.data[index];
-        }
-        column
+    pub fn get(&self, row: usize, col: usize) -> Option<&T> {
+        self.elements.get(self.get_index(row, col))
     }
 
-    pub fn dot(&self, matrix: &Matrix) -> Matrix {
-        if self.dim != matrix.dim {
-            panic!("dimensions of matrices should be same");
-        }
-
-        match self.dim {
-            Dimension::OneDim => {
-                let product: f64 = Self::vectors_dot(self.data(), matrix.data());
-                Matrix::new(Dimension::OneDim, 1, Shape::new(1, 1, 0), vec![product])
-            }
-            Dimension::TwoDim => todo!(),
-            Dimension::ThreeDim => todo!(),
-        }
+    pub fn set(&mut self, row: usize, col: usize, val: T) {
+        let index: usize = self.get_index(row, col);
+        self.elements[index] = val;
     }
 
-    pub fn mean(&self) -> f64 {
-        match self.dim {
-            Dimension::OneDim => {
-                self.data.iter().fold(0.0, |mut s, v| {
-                    s += v;
-                    s
-                }) / (self.data.len() as f64)
-            }
-            Dimension::TwoDim => todo!(),
-            Dimension::ThreeDim => todo!(),
-        }
+    pub fn size(&self) -> &Size {
+        &self.size
     }
 
-    pub fn sum(&self) -> f64 {
-        self.data.iter().fold(0.0, |mut s, v| {
-            s += v;
-            s
+    pub fn sum(&self) -> T {
+        self.fold(T::zero(), |mut a, &b| {
+            a += b;
+            a
         })
     }
 
-    pub fn transpose(&self) -> Matrix {
-        let mut transposed = self.copy();
-        transposed.set_data(vec![0.0; self.data.len()]);
+    pub fn mean(&self) -> T
+    where
+        T: Div<Output = T>,
+    {
+        self.sum() / T::from_usize(self.elements.len())
+    }
 
-        for r in 0..self.shape.y() {
-            for c in 0..self.shape.x() {
-                transposed.set(r, c, self.get(c, r));
-            }
+    pub fn order(&self) -> usize {
+        self.size().rows() * self.size().cols()
+    }
+
+    fn has_same_order(&self, other: &Matrix<T>) -> bool {
+        self.order() == other.order()
+    }
+
+    fn to_row_major(data: &[Vec<T>]) -> Vec<T> {
+        data.iter().fold(vec![], |mut res, el| {
+            let mut row = el.clone();
+            res.append(&mut row);
+            res
+        })
+    }
+
+    fn get_size(data: &Vec<Vec<T>>) -> Size {
+        let rows: usize = data.len();
+        let cols: usize = data.first().unwrap().len();
+        Size::new(rows, cols)
+    }
+
+    fn get_index(&self, row: usize, col: usize) -> usize {
+        row * self.size().cols() + col
+    }
+
+    fn fold(&self, init: T, f: fn(T, &T) -> T) -> T {
+        self.elements.iter().fold(init, f)
+    }
+
+    fn add_with_coeficient(
+        &self,
+        right: &Matrix<T>,
+        coeficient: T,
+    ) -> Result<Vec<T>, &'static str> {
+        if !self.has_same_order(right) {
+            return Err("matrices must have the same order");
         }
 
-        transposed
-    }
-
-    pub fn dot_matrix(left: &Matrix, right: &Matrix) -> Matrix {
-        let mut copy: Matrix = left.copy();
-        copy.set_data(vec![0.0; left.data.len()]);
-
-        for i in 0..left.shape().y() {
-            for j in 0..right.shape().x() {
-                for k in 0..left.shape().x() {
-                    let val: f64 = copy.get(i, j) + left.get(i, k) * right.get(k, j);
-                    copy.set(i, j, val);
-                }
-            }
-        }
-        copy
-    }
-
-    pub fn dot_vector(matrix: &Matrix, vector: &Matrix) -> Matrix {
-        let mut copy: Matrix = vector.copy();
-        copy.set_data(vec![0.0; vector.data.len()]);
-
-        for i in 0..matrix.shape().y() {
-            for j in 0..vector.shape().x() {
-                for k in 0..matrix.shape().x() {
-                    let val: f64 = copy.get(i, j) + matrix.get(i, k) * vector.get(k, j);
-                    copy.set(i, j, val);
-                }
-            }
+        let mut elements: Vec<T> = vec![T::zero(); self.elements.len()];
+        for i in 0..self.elements.len() {
+            elements[i] = self.elements[i] + (coeficient * right.elements[i]);
         }
 
-        copy
-    }
-
-    pub fn copy(&self) -> Matrix {
-        let data: Vec<f64> = self.data.iter().map(|d| d.clone()).collect::<Vec<f64>>();
-        Matrix::new(
-            self.dim.clone(),
-            self.size.clone(),
-            Shape::new(
-                self.shape.x().clone(),
-                self.shape.y().clone(),
-                self.shape.z().clone(),
-            ),
-            data,
-        )
-    }
-
-    pub fn dim(&self) -> &Dimension {
-        &self.dim
-    }
-
-    pub fn size(&self) -> usize {
-        self.size
-    }
-
-    pub fn shape(&self) -> &Shape {
-        &self.shape
-    }
-
-    pub fn data(&self) -> &[f64] {
-        self.data.as_ref()
-    }
-
-    pub fn set_data(&mut self, data: Vec<f64>) {
-        self.data = data;
-    }
-
-    fn gen_range(low: f64, high: f64, size: usize) -> Vec<f64> {
-        let mut rng: ThreadRng = rand::thread_rng();
-        (0..size).map(|_| rng.gen_range(low..high)).collect()
-    }
-
-    fn vectors_dot(a: &[f64], b: &[f64]) -> f64 {
-        let mut product: f64 = 0.0;
-        for i in 0..a.len() {
-            product += a[i] * b[i];
-        }
-        return product;
+        Ok(elements)
     }
 }
 
-impl ops::Add<f64> for Matrix {
-    type Output = Matrix;
+impl Matrix<i32> {
+    pub fn max(&self) -> i32 {
+        *self.elements.iter().max().unwrap()
+    }
 
-    fn add(mut self, rhs: f64) -> Self::Output {
-        let data: Vec<f64> = self.data().iter().map(|e| e + rhs).collect();
-        self.set_data(data);
-        self
+    pub fn min(&self) -> i32 {
+        *self.elements.iter().min().unwrap()
     }
 }
 
-impl ops::Add<Matrix> for Matrix {
-    type Output = Matrix;
-
-    fn add(mut self, rhs: Matrix) -> Self::Output {
-        if self.data().len() != rhs.data().len() {
-            panic!("dimensions of matrices should be same")
-        }
-
-        self.set_data(
-            self.data()
-                .iter()
-                .zip(rhs.data())
-                .map(|(a, b)| a + b)
-                .collect(),
-        );
-        self
+impl Matrix<f64> {
+    pub fn max(&self) -> f64 {
+        self.fold(f64::NEG_INFINITY, |a, &b| a.max(b))
     }
-}
 
-impl ops::Mul<f64> for Matrix {
-    type Output = Matrix;
-
-    fn mul(mut self, rhs: f64) -> Self::Output {
-        let data: Vec<f64> = self.data().iter().map(|e| e * rhs).collect();
-        self.set_data(data);
-        self
+    pub fn min(&self) -> f64 {
+        self.fold(f64::INFINITY, |a, &b| a.min(b))
     }
 }
 
 #[cfg(test)]
 mod test {
-    use crate::matrix::{dimension::Dimension, matrix::Matrix};
+
+    use crate::vector::{shape::Shape, vector::Vector};
+
+    use super::Matrix;
 
     #[test]
-    fn test_matrix_init() {
-        let elements: Vec<f64> = vec![1.2, 3.4, 9.0, 8.3, 9.2];
-        let matrix: Matrix = Matrix::matrix(elements);
-        println!("{:?}", &matrix);
+    fn test_init() {
+        let elements: Vec<Vec<f64>> = vec![vec![1.2, 2.4, 3.5], vec![4.7, 6.1, 7.2]];
+        let matrix: Matrix<f64> = Matrix::new(&elements);
 
-        println!("-----------------");
-
-        let elements: Vec<Vec<f64>> = vec![
-            vec![1.2, 2.4, 3.5],
-            vec![4.7, 6.1, 7.2],
-            vec![7.0, 1.0, 7.5],
-        ];
-        let matrix: Matrix = Matrix::matrix2d(elements);
-        println!("{:?}", &matrix);
-
-        println!("-----------------");
-
-        let elements: Vec<Vec<Vec<f64>>> = vec![
-            vec![
-                vec![1.2, 2.4, 3.5],
-                vec![4.7, 6.1, 7.2],
-                vec![7.0, 1.0, 7.5],
-            ],
-            vec![
-                vec![1.2, 6.3, 3.5],
-                vec![2.2, 4.1, 4.2],
-                vec![5.4, 0.0, 9.5],
-            ],
-        ];
-        let matrix: Matrix = Matrix::matrix3d(elements);
-        println!("{:?}", &matrix);
-    }
-
-    #[test]
-    fn test_transpose() {
-        let elements: Vec<Vec<f64>> = vec![
-            vec![1.2, 2.4, 3.5],
-            vec![4.7, 6.1, 7.2],
-            vec![7.0, 1.0, 7.5],
-        ];
-        let mut matrix: Matrix = Matrix::matrix2d(elements);
-        println!("{:?}", &matrix);
-        let transposed: Matrix = matrix.transpose();
-        println!("{:?}", transposed);
-    }
-
-    #[test]
-    fn test_dot_matrix() {
-        let left: Matrix = Matrix::matrix2d(vec![
-            vec![1.2, 2.4, 3.5],
-            vec![4.7, 6.1, 7.2],
-            vec![7.0, 1.0, 7.5],
-        ]);
-        let right: Matrix = Matrix::matrix2d(vec![
-            vec![1.2, 6.3, 3.5],
-            vec![2.2, 4.1, 4.2],
-            vec![5.4, 0.0, 9.5],
-        ]);
-        let p: Matrix = Matrix::dot_matrix(&left, &right);
-        println!("{:?}", p);
-    }
-
-    #[test]
-    fn test_dot_vector() {
-        let matrix: Matrix = Matrix::matrix2d(vec![
-            vec![1.2, 2.4, 3.5],
-            vec![4.7, 6.1, 7.2],
-            vec![7.0, 1.0, 7.5],
-        ]);
-        let vector: Matrix = Matrix::matrix(vec![1.2, 6.3, 3.5]);
-        let p: Matrix = Matrix::dot_vector(&matrix, &vector);
-        println!("{:?}", p);
-    }
-
-    #[test]
-    fn test_random() {
-        let matrix: Matrix = Matrix::random(-2.0, 2.0, (4, 1));
-        println!("{:?}", &matrix);
-
-        let matrix: Matrix = Matrix::random(-2.0, 2.0, (4, 4));
-        println!("{:?}", &matrix);
-
-        //let matrix: Matrix = Matrix::random(-2.0, 2.0, 4, Dimension::ThreeDim);
-        //println!("{:?}", &matrix);
-    }
-
-    #[test]
-    fn test_add() {
-        let mut matrix: Matrix = Matrix::random(-2.0, 2.0, (4, 4));
-        println!("{:?}", &matrix);
-
-        matrix = matrix + 2.0;
-        println!("{:?}", &matrix);
-
-        matrix = matrix * 3.0;
-        println!("{:?}", &matrix);
-
-        matrix = matrix + Matrix::random(-2.0, 2.0, (4, 4));
-        println!("{:?}", &matrix);
-    }
-
-    #[test]
-    fn test_range() {
-        let matrix: Matrix = Matrix::range(6, 20);
-        println!("{:?}", &matrix);
-    }
-
-    #[test]
-    fn test_get() {
-        let elements: Vec<Vec<f64>> = vec![
-            vec![0.0, 3.0],
-            vec![10.0, 7.0],
-            vec![20.0, 9.0],
-            vec![30.0, 14.0],
-            vec![40.0, 15.0],
-        ];
-        let matrix: Matrix = Matrix::matrix2d(elements);
-        println!("{:?}", matrix.get(4, 0));
+        assert_eq!(matrix.size().rows(), 2);
+        assert_eq!(matrix.size().cols(), 3);
+        assert_eq!(
+            matrix.elements.len(),
+            matrix.size().rows() * matrix.size().cols()
+        );
     }
 
     #[test]
     fn test_get_row() {
-        let elements: Vec<Vec<f64>> = vec![
-            vec![0.0, 3.0],
-            vec![10.0, 7.0],
-            vec![20.0, 9.0],
-            vec![30.0, 14.0],
-            vec![40.0, 15.0],
-        ];
-        let matrix: Matrix = Matrix::matrix2d(elements);
-
-        println!("{:?}", matrix.get_row(0));
-        println!("{:?}", matrix.get_row(1));
-        println!("{:?}", matrix.get_row(2));
+        let matrix: Matrix<f64> = get_default_matrix();
+        for r in 0..matrix.size().rows() {
+            let row = matrix.get_row(r);
+            assert_eq!(row.len(), matrix.size().cols());
+        }
     }
 
     #[test]
-    fn test_get_column() {
-        let elements: Vec<Vec<f64>> = vec![
-            vec![0.0, 3.0],
-            vec![10.0, 7.0],
-            vec![20.0, 9.0],
-            vec![30.0, 14.0],
-            vec![40.0, 15.0],
-        ];
-        let matrix: Matrix = Matrix::matrix2d(elements);
+    fn test_random() {
+        let low: i32 = 1;
+        let high: i32 = 1000;
+        let rows: usize = 50;
+        let cols: usize = 15;
 
-        println!("{:?}", matrix.get_column(0));
-        println!("{:?}", matrix.get_column(1));
+        let matrix: Matrix<i32> = Matrix::random(low, high, rows, cols);
+
+        assert_eq!(matrix.elements.len(), rows * cols);
+        assert_eq!(matrix.size().rows(), rows);
+        assert_eq!(matrix.size().cols(), cols);
+        assert!(matrix.max() <= high);
+    }
+
+    #[test]
+    fn test_get() {
+        let matrix: Matrix<f64> = get_default_matrix();
+
+        assert_eq!(*matrix.get(0, 0).unwrap(), 1.2);
+        assert_eq!(*matrix.get(1, 1).unwrap(), 6.1);
+        assert_eq!(*matrix.get(2, 2).unwrap(), 7.5);
+    }
+
+    #[test]
+    fn test_set() {
+        let mut matrix: Matrix<f64> = get_default_matrix();
+
+        matrix.set(0, 0, 999.999);
+        matrix.set(1, 2, 777.999);
+        matrix.set(2, 1, 1.0);
+
+        assert_eq!(*matrix.get(0, 0).unwrap(), 999.999);
+        assert_eq!(*matrix.get(1, 2).unwrap(), 777.999);
+        assert_eq!(*matrix.get(2, 1).unwrap(), 1.0);
+    }
+
+    #[test]
+    fn test_sum() {
+        let matrix: Matrix<f64> = get_default_matrix();
+        assert!(matrix.sum() - 40.6 < f64::EPSILON);
+    }
+
+    #[test]
+    fn test_mean() {
+        let matrix: Matrix<f64> = get_default_matrix();
+        assert!(matrix.mean() - (40.6 / 9.0) < f64::EPSILON);
+    }
+
+    #[test]
+    fn test_transpose() {
+        let matrix: Matrix<f64> = get_default_matrix();
+        let tm: Matrix<f64> = matrix.transpose();
+        let dtm: Matrix<f64> = get_default_matrix_transposed();
+
+        for i in 0..tm.size().rows() {
+            for j in 0..tm.size().cols() {
+                assert_eq!(tm.get(i, j), dtm.get(i, j));
+            }
+        }
+    }
+
+    #[test]
+    fn test_equals() {
+        let matrix1: Matrix<f64> = get_default_matrix();
+        let matrix2: Matrix<f64> = get_default_matrix();
+
+        assert!(matrix1.equals(&matrix2))
+    }
+
+    #[test]
+    fn test_product() {
+        let matrix1: Matrix<i32> = Matrix::new(&vec![vec![1, 5], vec![2, 3], vec![1, 7]]);
+        let matrix2: Matrix<i32> = Matrix::new(&vec![vec![1, 2, 3, 7], vec![5, 2, 8, 1]]);
+        let res: Matrix<i32> = matrix1.product(&matrix2).unwrap();
+
+        assert!(res.equals(&get_default_matrix_product()))
+    }
+
+    #[test]
+    fn test_add() {
+        let left: Matrix<f64> = get_default_matrix();
+        let right: Matrix<f64> = get_default_matrix();
+        let result: Result<Matrix<f64>, &str> = left.add(&right);
+        let expected: Matrix<f64> = Matrix::new(&vec![
+            vec![2.4, 4.8, 7.0],
+            vec![9.4, 12.2, 14.4],
+            vec![14.0, 2.0, 15.0],
+        ]);
+
+        match result {
+            Ok(r) => assert!(r.equals(&expected)),
+            Err(_) => panic!("error durin addition of matrices"),
+        }
+    }
+
+    #[test]
+    fn test_subtraction() {
+        let left: Matrix<f64> = get_default_matrix();
+        let right: Matrix<f64> = get_default_matrix();
+        let result: Result<Matrix<f64>, &str> = left.subtract(&right);
+        let expected: Matrix<f64> = Matrix::new(&vec![
+            vec![0.0, 0.0, 0.0],
+            vec![0.0, 0.0, 0.0],
+            vec![0.0, 0.0, 0.0],
+        ]);
+
+        match result {
+            Ok(r) => assert!(r.equals(&expected)),
+            Err(_) => panic!("error during addition of matrices"),
+        }
+    }
+
+    #[test]
+    fn test_scalar() {
+        let matrix: Matrix<f64> = get_default_matrix();
+        let result: Matrix<f64> = matrix.scalar(3.0);
+        let expected: Matrix<f64> = Matrix::new(&vec![
+            vec![3.6, 7.2, 10.5],
+            vec![14.1, 18.3, 21.6],
+            vec![21.0, 3.0, 22.5],
+        ]);
+
+        for i in 0..result.elements.len() {
+            assert!(expected.elements[i] - result.elements[i] < 0.00001);
+        }
+    }
+
+    #[test]
+    fn test_vector_product() {
+        let matrix: Matrix<i32> = Matrix::new(&vec![vec![1, -1, 2], vec![0, -3, 1]]);
+        let vector: Vector<i32> = Vector::new(vec![2, 1, 0], Shape::Row);
+        let product: Result<Vector<i32>, &str> = matrix.vector_product(&vector);
+        let expected: Vector<i32> = Vector::new(vec![1, -3], Shape::Col);
+
+        match product {
+            Ok(p) => assert!(p.equals(&expected)),
+            Err(_) => panic!("error during vector product"),
+        }
+    }
+
+    fn get_default_matrix() -> Matrix<f64> {
+        let elements: Vec<Vec<f64>> = vec![
+            vec![1.2, 2.4, 3.5],
+            vec![4.7, 6.1, 7.2],
+            vec![7.0, 1.0, 7.5],
+        ];
+        Matrix::new(&elements)
+    }
+
+    fn get_default_matrix_transposed() -> Matrix<f64> {
+        let elements: Vec<Vec<f64>> = vec![
+            vec![1.2, 4.7, 7.0],
+            vec![2.4, 6.1, 1.0],
+            vec![3.5, 7.2, 7.5],
+        ];
+        Matrix::new(&elements)
+    }
+
+    fn get_default_matrix_product() -> Matrix<i32> {
+        let elements: Vec<Vec<i32>> = vec![
+            vec![26, 12, 43, 12],
+            vec![17, 10, 30, 17],
+            vec![36, 16, 59, 14],
+        ];
+        Matrix::new(&elements)
     }
 }
