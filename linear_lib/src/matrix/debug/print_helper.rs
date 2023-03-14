@@ -1,9 +1,11 @@
+use std::ops::{Add, Mul};
+
 use crate::{matrix::matrix::Matrix, num::Num};
 
 pub struct PrintHelper {}
 
 impl PrintHelper {
-    pub fn print_rows<T: Num>(matrix: &Matrix<T>, max: T) {
+    pub fn print_rows<T: Mul<Output = T> + Add<Output = T> + Num>(matrix: &Matrix<T>, max: T) {
         let width: usize = max.to_string().len();
         for r in 0..matrix.size().rows() {
             let row: Vec<&T> = matrix.get_row(r);

@@ -1,4 +1,4 @@
-use std::ops::Mul;
+use std::ops::{Add, Mul};
 
 use crate::{generator::Generator, num::Num};
 
@@ -11,7 +11,7 @@ pub struct Vector<T> {
 
 impl<T> Vector<T>
 where
-    T: Mul<Output = T> + Num,
+    T: Mul<Output = T> + Add<Output = T> + Num,
 {
     pub fn new(elements: Vec<T>, shape: Shape) -> Self {
         Self { elements, shape }
@@ -36,6 +36,10 @@ where
         }
     }
 
+    pub fn get(&self, index: usize) -> Option<&T> {
+        self.elements.get(index)
+    }
+
     pub fn dot(&self, right: &Vector<T>) -> Result<T, &'static str> {
         if self.size() != right.size() {
             return Err("invalid vector size");
@@ -53,12 +57,64 @@ where
         Ok(product)
     }
 
+    pub fn outer(&self, right: &Vector<T>) -> Result<T, &'static str> {
+        if self.size() != right.size() {
+            return Err("invalid vector size");
+        }
+
+        if self.shape != Shape::Col || right.shape != Shape::Row {
+            return Err("invalid vectors shape");
+        }
+
+        todo!()
+    }
+
+    pub fn mul(&mut self, val: T) {
+        self.set_elements(self.map(val, |a, &b| a * b));
+    }
+
+    pub fn add(&mut self, val: T) {
+        self.set_elements(self.map(val, |a, &b| a + b));
+    }
+
+    pub fn map(&self, val: T, f: fn(T, &T) -> T) -> Vec<T> {
+        self.elements.iter().map(|e| f(val, e)).collect()
+    }
+
     pub fn elements(&self) -> &[T] {
         self.elements.as_ref()
     }
 
     pub fn shape(&self) -> &Shape {
         &self.shape
+    }
+
+    fn set_elements(&mut self, elements: Vec<T>) {
+        self.elements = elements;
+    }
+}
+
+impl<T> Mul<T> for Vector<T>
+where
+    T: Mul<Output = T> + Add<Output = T> + Num,
+{
+    type Output = Vector<T>;
+
+    fn mul(self, rhs: T) -> Self::Output {
+        let elements = self.map(rhs, |a, &b| a * b);
+        Vector::new(elements, self.shape().clone())
+    }
+}
+
+impl<T> Add<T> for Vector<T>
+where
+    T: Mul<Output = T> + Add<Output = T> + Num,
+{
+    type Output = Vector<T>;
+
+    fn add(self, rhs: T) -> Self::Output {
+        let elements = self.map(rhs, |a, &b| a + b);
+        Vector::new(elements, self.shape().clone())
     }
 }
 
@@ -74,8 +130,6 @@ mod test {
     fn test_init() {
         let vec: Vector<i32> = Vector::new(ELEMENTS.to_vec(), Shape::Col);
 
-        println!("{:?}", vec);
-
         assert_eq!(*vec.shape(), Shape::Col);
         assert_eq!(vec.elements.len(), ELEMENTS.len());
     }
@@ -87,8 +141,6 @@ mod test {
         assert_eq!(*vec.shape(), Shape::Col);
         vec.transpose();
         assert_eq!(*vec.shape(), Shape::Row);
-
-        println!("{:?}", vec);
     }
 
     #[test]
@@ -112,8 +164,6 @@ mod test {
         let high: i32 = 1000;
         let v: Vector<i32> = Vector::random(low, high, size, Shape::Col);
 
-        println!("{:?}", v);
-
         assert_eq!(v.elements().len(), size);
         assert_eq!(*v.shape(), Shape::Col);
 
@@ -127,9 +177,35 @@ mod test {
         let high: f64 = 10.0;
         let v: Vector<f64> = Vector::random(low, high, size, Shape::Row);
 
-        println!("{:?}", v);
-
         assert_eq!(v.elements().len(), size);
         assert_eq!(*v.shape(), Shape::Row);
+    }
+
+    #[test]
+    fn test_mul() {
+        let mut vec: Vector<i32> = Vector::new(ELEMENTS.to_vec(), Shape::Row);
+        vec.mul(2);
+        for i in 0..vec.size() {
+            assert_eq!(*vec.get(i).unwrap(), ELEMENTS[i] * 2);
+        }
+
+        let mul_vec: Vector<i32> = vec * 3;
+        for i in 0..mul_vec.size() {
+            assert_eq!(*mul_vec.get(i).unwrap(), ELEMENTS[i] * 6);
+        }
+    }
+
+    #[test]
+    fn test_add() {
+        let mut vec: Vector<i32> = Vector::new(ELEMENTS.to_vec(), Shape::Row);
+        vec.add(2);
+        for i in 0..vec.size() {
+            assert_eq!(*vec.get(i).unwrap(), ELEMENTS[i] + 2);
+        }
+
+        let mul_vec: Vector<i32> = vec + 3;
+        for i in 0..mul_vec.size() {
+            assert_eq!(*mul_vec.get(i).unwrap(), ELEMENTS[i] + 5);
+        }
     }
 }
