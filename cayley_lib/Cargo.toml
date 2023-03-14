@@ -3,8 +3,5 @@ name = "cayley"
 version = "0.1.0"
 edition = "2021"
 
-[dependencies]
-float-ord = "0.3.2"
-
 [dependencies.linear]
 path = "../linear_lib"
